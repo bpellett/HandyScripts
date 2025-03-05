@@ -1,0 +1,262 @@
+#!/usr/bin/perl
+
+# Script:       AlarmWhenClockStrikes
+#
+# Description:  Alarm When Clock Strikes {hour} {minute}
+#
+# Details:
+#
+#       Wait for the specified time, then play audio files
+#       in the specified directory
+#
+# Author:       Brant Pellett
+# Version:      1.0
+##  Copyright (c) 2002 bpellett
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy
+##  of this software and associated documentation files (the "Software"), to deal
+##  in the Software without restriction, including without limitation the rights
+##  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+##  copies of the Software, and to permit persons to whom the Software is
+##  furnished to do so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in all
+##  copies or substantial portions of the Software.
+##
+##  The comments containing the following, together with the related comments,
+##  shall be included in all copies or substantial portions of each/any script:
+##
+##    Script:
+##    Description:
+##    Details:
+##    Author:
+##    Copyright:
+##    Created date:
+##    Version:
+##    Version History:
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+##  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+##  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+##  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+##  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+##  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+##  SOFTWARE.
+# Created date: 2002
+# Version:      1.1
+#
+# Depends On:   TBD
+# Working directory: TBD
+#
+# Version History:
+#       Version Date            Who             Description
+#       1.0     2002            Brant Pellett   Created
+#       1.1     2025-03-05      Brant Pellett   Added documentation, parameter checks
+
+use strict;
+
+my $ScriptName = "AlarmWhenClockStrikes";
+
+# Don't buffer stdout:
+$| = 1 ;
+
+#       Configuration section (customize as needed):
+my $DefaultAlarmDir = "/Media/Sounds/Alarm/Default";
+
+if      ( scalar(@ARGV) < 1 )
+{
+        usage("Missing arguments");
+        exit(1) ;
+}
+
+my $AnArg = "";
+my $ArgIndex = 0;
+my $VerboseMode = "False" ;
+my $AlarmHour = "Unset";
+my $AlarmMinute = "Unset";
+my @Mp3Directories = ();
+
+while   ( $ArgIndex < scalar(@ARGV) )
+{
+        $AnArg = $ARGV[$ArgIndex++];
+        if      ( $AnArg eq "-v" )
+        {
+                $VerboseMode = "True" ;
+        }
+        elsif   ( $AlarmHour eq "Unset" )
+        {
+                $AlarmHour = $AnArg;
+        }
+        elsif   ( $AlarmMinute eq "Unset" )
+        {
+                $AlarmMinute = $AnArg;
+        }
+        else
+        {
+                if      ( -d $AnArg )
+                {
+                        push(@Mp3Directories,$AnArg);
+                }
+                else
+                {
+                        print("Directory '" . $AnArg . "' not found - skipping\n");
+                }
+        }
+}
+
+if      ( $AlarmHour eq "Unset" )
+{
+        usage("Missing parameters");
+        exit(2);
+}
+elsif   ( $AlarmMinute eq "Unset" )
+{
+        $AlarmMinute = 0;
+        if      ( ! -d $DefaultAlarmDir)
+        {
+                usage("Default alarm directory '" . $DefaultAlarmDir .
+                        "' does not exist - exiting!");
+                exit(3);
+        }
+        push(@Mp3Directories,$DefaultAlarmDir);
+}
+elsif   ( scalar(@Mp3Directories) < 1 )
+{
+DebugPrint("No explicit sound file directories specified.");
+        $AlarmMinute = 0;
+        if      ( ! -d $DefaultAlarmDir)
+        {
+                usage("Default alarm directory '" . $DefaultAlarmDir .
+                        "' does not exist - exiting!");
+                exit(3);
+        }
+        push(@Mp3Directories,$DefaultAlarmDir);
+DebugPrint("Pushed default directory '" . $DefaultAlarmDir . " into sound file directory list.");
+}
+DebugPrint("Sound file directories: " . scalar(@Mp3Directories) );
+
+while   ( (ItIsNow())[0] > $AlarmHour )
+{
+        sleep(55) ;
+} ;
+
+while   ( (ItIsNow())[0] < $AlarmHour )
+{
+        sleep(55) ;
+} ;
+
+while   ( (ItIsNow())[1] < $AlarmMinute )
+{
+        sleep(28) ;
+} ;
+
+my $SoundsDir = "";
+my $aSoundFile = "";
+foreach $SoundsDir ( @Mp3Directories )
+{
+        my $FindCommand = "find " . $SoundsDir . " -type f -name \\\*.mp3 -print -o " .
+                "-type f -name \\\*.wav -print -o -type f -name \\\*.au -print" ;
+        my @SoundFiles = ReadFromCommand($FindCommand);
+        foreach $aSoundFile ( sort @SoundFiles )
+        {
+                if      ( $aSoundFile =~ m/\.mp3$/ )
+                {
+                        if      ( $VerboseMode eq "True" )
+                        {
+                                print("Playing:\t" . $aSoundFile . "\n") ;
+                        } ;
+                        system("playmus " . '"' . $aSoundFile . '"') ;
+                }
+                elsif   ( $aSoundFile =~ m/\.wav$/ )
+                {
+                        if      ( $VerboseMode eq "True" )
+                        {
+                                print("Playing:\t" . $aSoundFile . "\n") ;
+                        } ;
+                        system("play --volume=15 " . '"' . $aSoundFile . '"') ;
+                }
+                elsif   ( $aSoundFile =~ m/\.au$/ )
+                {
+                        if      ( $VerboseMode eq "True" )
+                        {
+                                print("Playing:\t" . $aSoundFile . "\n") ;
+                        } ;
+                        system("play --volume=15 " . '"' . $aSoundFile . '"') ;
+                } ;
+        }
+}
+
+exit(0);
+
+sub ItIsNow
+{
+        my($Seconds, $Minutes, $Hours, $Mday, $Month, $Year, $Wday, $Yday, $IsDST) ;
+        my(@Result) ;
+
+        ($Seconds, $Minutes, $Hours, $Mday, $Month, $Year, $Wday, $Yday,
+                $IsDST) = localtime(time()) ;
+        $Year = $Year + 1900 ;
+        $Month++ ;
+
+        @Result = ( $Hours, $Minutes, $Seconds) ;
+
+        return(@Result) ;
+};
+
+sub usage()
+{
+        my ($_message) = @_;
+
+        if      ( length($_message) > 0 )
+        {
+                PrintLine($_message);
+                PrintLine("");
+        }
+        PrintLine("usage: " . $ScriptName . " [ -v ] {hour} [ {minute} [ {director(ies) containing mp3s to play} ] ]") ;
+}
+
+sub ReadFromCommand
+{
+        my $_Command;
+        my $_RawLine;
+        my $_Line;
+        my @_Results;
+        ( $_Command ) = @_;
+
+        @_Results=();
+
+        open(CIN,$_Command . " |") || die("Can't get command output!");
+
+        while   ( $_RawLine = <CIN> )
+        {
+                $_Line = CleanEOLs($_RawLine);
+                push(@_Results,$_Line);
+        }
+
+        close(CIN);
+
+        return(@_Results);
+}
+
+sub CleanEOLs
+{
+        my $_cleaned;
+        ($_cleaned) = @_;
+
+        while   ( $_cleaned =~ m/[\r\n\t ]$/ )
+        {
+                chop($_cleaned);
+        }
+
+        return($_cleaned);
+}
+
+sub PrintLine()
+{
+        print(join(" ",@_) . "\n");
+};
+
+sub DebugPrint
+{
+#       print(join(" ",@_) . "\n");
+};
