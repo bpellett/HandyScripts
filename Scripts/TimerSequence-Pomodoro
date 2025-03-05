@@ -1,0 +1,204 @@
+#!/usr/bin/perl
+
+# Script:       TimerSequence-Pomodoro
+#
+# Description:  Timer Sequence - [using the] Pomodoro [Technique]
+#
+# Details:
+#
+#       Cycle through a Pomodoro sequence of timers
+#
+# Author:       Brant Pellett
+# Depends On:   xmessage
+##  Copyright (c) 2024 bpellett
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy
+##  of this software and associated documentation files (the "Software"), to deal
+##  in the Software without restriction, including without limitation the rights
+##  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+##  copies of the Software, and to permit persons to whom the Software is
+##  furnished to do so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in all
+##  copies or substantial portions of the Software.
+##
+##  The comments containing the following, together with the related comments,
+##  shall be included in all copies or substantial portions of each/any script:
+##
+##    Script:
+##    Description:
+##    Details:
+##    Author:
+##    Copyright:
+##    Created date:
+##    Version:
+##    Version History:
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+##  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+##  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+##  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+##  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+##  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+##  SOFTWARE.
+# Created date: 2024-09-10
+# Version:      1.0
+#
+# Version History:
+#       Version Date            Who             Description
+#       1.0     2024-09-10      Brant Pellett   Created
+
+use strict;
+
+my $ArgIndex = 0;
+my $ArgCount = scalar(@ARGV);
+my $AnArg = "";
+my $RunContinuously = "False";
+my @PomodoroPairs = qw/1500_300 1500_300 1500_300 1500_1500/;
+my $ScriptName = "TimerSequence-Pomodoro";
+
+if  ( $ArgCount < 1 )
+{
+  usage("Missing argument(s)");
+  exit(1);
+}
+
+while   ( $ArgIndex < $ArgCount )
+{
+        $AnArg = $ARGV[$ArgIndex++];
+
+        if      ( $AnArg eq "-c" )
+        {
+                $RunContinuously = "True";
+        }
+        else
+        {
+                usage("Invalid argument - '" . $AnArg . "' - exiting!");
+                exit(1);
+        }
+}
+
+if      ( $RunContinuously eq "False" )
+{
+        TimerSequence(@PomodoroPairs);
+}
+else
+{
+        while   ( 1 == 1 )
+        {
+                TimerSequence(@PomodoroPairs);
+        }
+}
+
+exit(0);
+
+sub TimerSequence
+{
+        my @_PomodoroPairs = @_;
+        my $_PopupResponse = "";
+
+        foreach my $_WorkBreakPair ( @_PomodoroPairs )
+        {
+                my ($WorkLength, $BreakLength) = split("_",$_WorkBreakPair);
+                $_PopupResponse = PopupMessage("Work.");
+                if      ( $_PopupResponse eq "Start" )
+                {
+                        if      ( ( $WorkLength % 60 ) == 0 )
+                        {
+                                print("Working " . ($WorkLength / 60) . " minutes...\n");
+                        }
+                        else
+                        {
+                                print("Working " . $WorkLength . " seconds...\n");
+                        }
+                        sleep($WorkLength);
+                        print("Done.\n");
+                }
+                elsif   ( $_PopupResponse eq "Skip" )
+                {
+                        print("Skipping...\n");
+                }
+                elsif   ( $_PopupResponse eq "Cancel Sequence" )
+                {
+                        print("Sequence cancelled.\n");
+                        return();
+                }
+                else
+                {
+                        print("Invalid response: '" . $_PopupResponse . "'\n");
+                }
+                $_PopupResponse = PopupMessage("Break.");
+                if      ( $_PopupResponse eq "Start" )
+                {
+                        if      ( ( $BreakLength % 60 ) == 0 )
+                        {
+                                print("Breaking " . ($BreakLength / 60) . " minutes...\n");
+                        }
+                        else
+                        {
+                                print("Breaking " . $BreakLength . " seconds...\n");
+                        }
+                        sleep($BreakLength);
+                        print("Done.\n");
+                }
+                elsif   ( $_PopupResponse eq "Skip" )
+                {
+                        print("Skipping...\n");
+                }
+                elsif   ( $_PopupResponse eq "Cancel Sequence" )
+                {
+                        print("Sequence cancelled.\n");
+                        return();
+                }
+                else
+                {
+                        print("Invalid response: '" . $_PopupResponse . "'\n");
+                }
+        }
+}
+
+sub PopupMessage
+{
+        my ($_Message) = @_;
+
+        my $_Response = ReadFirstLineFromCommand("xmessage -buttons 'Start:0,Skip:1,Cancel Sequence:2' -default Start -center -print '" . $_Message . "'");
+
+        return $_Response;
+}
+
+sub usage
+{
+        print(join(" ",@_) . "\n");
+        print("usage: " . $ScriptName . " [ -c ]\n");
+}
+
+sub ReadFirstLineFromCommand
+{
+        my $_Command;
+        my $_RawLine;
+        my $_Result;
+        ( $_Command ) = @_;
+
+        $_Result="";
+
+        open(CIN,$_Command . " |") || die("Can't get command output!");
+        $_RawLine = <CIN>;
+        close(CIN);
+
+        $_Result = CleanEOLs($_RawLine);
+
+        return($_Result);
+}
+
+sub CleanEOLs
+{
+        my $_cleaned;
+        ($_cleaned) = @_;
+
+        while   ( $_cleaned =~ m/[\r\n\t ]$/ )
+        {
+                chop($_cleaned);
+        }
+
+        return($_cleaned);
+}
