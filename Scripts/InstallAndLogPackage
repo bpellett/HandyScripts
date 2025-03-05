@@ -1,0 +1,158 @@
+#!/usr/bin/perl
+
+# Script:       InstallAndLogPackage
+#
+# Description:  Install And Log Package
+#
+# Details:
+#
+#       Install a system package while
+#       logging the installation
+#
+# Author:       Brant Pellett
+##  Copyright:  Copyright (C) 2025
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy
+##  of this software and associated documentation files (the "Software"), to deal
+##  in the Software without restriction, including without limitation the rights
+##  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+##  copies of the Software, and to permit persons to whom the Software is
+##  furnished to do so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in all
+##  copies or substantial portions of the Software.
+##
+##  The comments containing the following, together with the related comments,
+##  shall be included in all copies or substantial portions of each/any script:
+##
+##    Script:
+##    Description:
+##    Details:
+##    Author:
+##    Copyright:
+##    Created date:
+##    Version:
+##    Version History:
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+##  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+##  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+##  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+##  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+##  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+##  SOFTWARE.
+# Created date: 2025-02-18
+# Version:      1.0
+#
+# Version History:
+#       Version Date            Who             Description
+#       1.0     2025-02-18      Brant Pellett   Created
+
+use strict;
+
+my $ScriptName = "InstallAndLogPackage";
+my $HostName = "";
+my $HomeDir = "";
+my $LogDir = "";
+my $aPackage = "";
+my $PackageInstaller = "";
+my $PackageInstallLogFile = "";
+my $PackageInstallCommand = "";
+my $UserName = "";
+
+if      ( scalar(@ARGV) < 1 )
+{
+        usage();
+        exit(1);
+}
+
+$HostName = HostName();
+$UserName = WhoAmI();
+$HomeDir = $ENV{"HOME"};
+$LogDir = $PackageInstallLogFile = $HomeDir . "/Sync/Logs/Host/" . $HostName;
+
+if      ( $UserName eq "root" )
+{
+        $PackageInstaller = "apt-get install";
+}
+else
+{
+        $PackageInstaller = "sudo apt-get install";
+}
+
+if      ( scalar(@ARGV) < 1 )
+{
+        usage("Missing arguments");
+        exit(1);
+}
+
+system("mkdir -pv " . $LogDir);
+
+foreach $aPackage ( @ARGV )
+{
+        $PackageInstallLogFile = $LogDir . "/" . $HostName . "/`DateStamp`-AptGetInstall-" . $aPackage . ".log";
+        $PackageInstallCommand = "(" . $PackageInstaller . " " . $aPackage .
+                " 2>&1) | tee " . $PackageInstallLogFile;
+
+        system($PackageInstallCommand);
+}
+
+exit(0);
+
+sub usage
+{
+        PrintLine(join(" ",@_));
+        PrintLine("");
+        PrintLine("usage: " . $ScriptName . " {package name} [ {package name} [ {package name} [ ... ] ] ]");
+}
+
+sub HostName
+{
+        return(ReadFirstLineFromCommand("hostname"));
+}
+
+sub ReadFirstLineFromCommand
+{
+        my $_Command;
+        my $_RawLine;
+        my $_Result;
+        ( $_Command ) = @_;
+
+        $_Result="";
+
+        open(CIN,$_Command . " |") || die("Can't get command output!");
+        $_RawLine = <CIN>;
+        close(CIN);
+
+        $_Result = CleanEOLs($_RawLine);
+
+        return($_Result);
+}
+
+sub WhoAmI
+{
+        return(ReadFirstLineFromCommand("whoami"));
+}
+
+sub CleanEOLs
+{
+        my $_cleaned;
+        ($_cleaned) = @_;
+
+        while   ( $_cleaned =~ m/[\r\n\t ]$/ )
+        {
+                chop($_cleaned);
+        }
+
+        return($_cleaned);
+}
+
+sub PrintLine
+{
+        print(join(" ",@_) . "\n");
+} ;
+
+sub DebugPrint
+{
+#       PrintLine(join(" ",@_));
+} ;
